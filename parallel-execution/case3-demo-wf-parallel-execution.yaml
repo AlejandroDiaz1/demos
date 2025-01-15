@@ -1,0 +1,70 @@
+# Aplicación de e-commerce:
+# Se  necesita obtener información del usuario y detalles de un pedido al mismo tiempo para generar un resumen de compra
+
+# Execution info:
+# {"orderId": "101", "userId": "1"}
+
+
+# ---------------------------------------------- Caso 3: Excepciones dentro de cada rama
+
+main:
+  params: [args]
+  steps:
+    - init:
+        assign:
+          - users_url: ${sys.get_env("USERS_URL")}
+          - orders_url: ${sys.get_env("ORDERS_URL")}
+          - user: {}
+          - order: {}
+
+    - parallelStep:
+        parallel:
+          shared: [user, order]
+          branches:
+            - getUser:
+                steps:
+                  - getUserCall:
+                      try:
+                        call: http.get
+                        args:
+                          url: ${users_url}
+                          auth:
+                            type: OIDC
+                          query:
+                            user_id: ${args.userId}
+                        result: user
+                      except:
+                        as: error
+                        assign:
+                          - user: 
+                              status: "ERROR"
+                              message: "Failed to retrieve user"
+                              error_details: ${error}
+                            
+
+            - getOrder:
+                steps:
+                  - getOrderCall:
+                      try:
+                        call: http.get
+                        args:
+                          url: ${orders_url}
+                          auth:
+                            type: OIDC
+                          query:
+                            order_id: ${args.orderId}
+                        result: order
+                      except:
+                        as: error
+                        assign:
+                          - order: 
+                              status: "ERROR"
+                              message: "Failed to retrieve order"
+                              error_details: ${error}
+                            
+
+    - combineResults:
+        return:
+          summary:
+            user: ${user}
+            order: ${order}

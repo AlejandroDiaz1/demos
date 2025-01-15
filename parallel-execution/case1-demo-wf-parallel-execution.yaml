@@ -1,0 +1,64 @@
+# Aplicación de e-commerce:
+# Se  necesita obtener información del usuario y detalles de un pedido al mismo tiempo para generar un resumen de compra
+
+# Execution info:
+# {"orderId": "101", "userId": "1"}
+
+
+# ---------------------------------------------- Caso 1: Ejemplo inicial
+
+main:
+  params: [args]
+  steps:
+    - init:
+        assign:
+          - users_url: ${sys.get_env("USERS_URL")}
+          - orders_url: ${sys.get_env("ORDERS_URL")}
+          - user: {}
+          - order: {}
+
+    - parallelStep:
+        parallel:
+          shared: [user, order]
+          branches:
+            - getUser:
+                steps:
+                  - getUserCall:
+                      call: http.get
+                      args:
+                        url: ${users_url}
+                        auth:
+                          type: OIDC
+                        query:
+                          user_id: ${args.userId}
+                      result: user
+                      
+            - getOrder:
+                steps:
+                  - getOrderCall:
+                      call: http.get
+                      args:
+                        url: ${orders_url}
+                        auth:
+                          type: OIDC
+                        query:
+                          order_id: ${args.orderId}
+                      result: order
+
+    - logUserInfo:
+        call: sys.log
+        args:
+          text: ${"User info -> " + json.encode_to_string(user.body)}
+          severity: INFO
+    
+    - logOrderInfo:
+        call: sys.log
+        args:
+          text: ${"Order info -> " + json.encode_to_string(order.body)}
+          severity: INFO
+
+    - combineResults:
+        return:
+          summary:
+            user: ${user.body}
+            order: ${order.body}

@@ -1,0 +1,63 @@
+# Aplicación de e-commerce:
+# Se  necesita obtener información del usuario y detalles de un pedido al mismo tiempo para generar un resumen de compra
+
+# Execution info:
+# {"orderId": "101", "userId": "1"}
+
+
+# ---------------------------------------------- Caso 2: Excepciones aplicadas en el bloque completo de parallel
+
+main:
+  params: [args]
+  steps:
+    - init:
+        assign:
+          - users_url: ${sys.get_env("USERS_URL")}
+          - orders_url: ${sys.get_env("ORDERS_URL")}
+          - user: {}
+          - order: {}
+
+    - parallelStep:
+        try:
+          parallel:
+            shared: [user, order]
+            branches:
+              - getUser:
+                  steps:
+                    - getUserCall:
+                        call: http.get
+                        args:
+                          url: ${users_url}
+                          auth:
+                            type: OIDC
+                          query:
+                            user_id: ${args.userId}
+                        result: user
+                      
+              - getOrder:
+                  steps:
+                    - getOrderCall:
+                        call: http.get
+                        args:
+                          url: ${orders_url}
+                          auth:
+                            type: OIDC
+                          query:
+                            order_id: ${args.orderId}
+                        result: order
+
+        except:
+          as: e
+          steps:
+            - log:
+                call: sys.log
+                args:
+                    data: ${e}
+            - returnError:
+                return: ${e}
+                
+    - combineResults:
+        return:
+          summary:
+            user: ${user.body}
+            order: ${order.body}

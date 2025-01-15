@@ -1,0 +1,33 @@
+# Env
+.env
+.env*
+
+# Python virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# Python compiled files
+*.pyc
+__pycache__/
+
+# Logs
+*.log
+
+# Data files
+data/
+
+# Temporary files
+*.tmp
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Special/personal notes
+text.txt
+
+# Other
+.DS_Store
+.python-version
