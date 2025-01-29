@@ -1,0 +1,66 @@
+main:
+   params: [input]
+   steps:
+   - initializeData:
+       assign:
+           - weatherAlerts: []
+           - processedCities: 0
+           - alertsCount: 0
+   
+   - processCities:
+       for:
+           value: city
+           in: ${input.cities}
+           steps:
+               - getWeatherData:
+                   call: http.get
+                   args:
+                       url: 'https://weather-api167.p.rapidapi.com/api/weather/full_info'
+                       headers:
+                            'x-rapidapi-key': ${sys.get_env("APIKEY_WEATHER")}
+                            'x-rapidapi-host': "weather-api167.p.rapidapi.com"
+                       query:
+                           place: ${city.name}
+                   result: weatherData
+               
+               - checkTemperature:
+                   switch:
+                       - condition: ${weatherData.body.current.temperature < 273.15}
+                         assign:
+                             - alertType: "freezing"
+                             - severity: "warning"
+                             - alertsCount: ${alertsCount + 1}
+                       - condition: ${weatherData.body.current.visibility < 5000}
+                         assign:
+                             - alertType: "low_visibility" 
+                             - severity: "caution"
+                             - alertsCount: ${alertsCount + 1}
+                       - condition: ${weatherData.body.current.wind.speed > 8}
+                         assign:
+                             - alertType: "strong_wind"
+                             - severity: "warning"
+                             - alertsCount: ${alertsCount + 1}
+                       - condition: ${true}
+                         assign:
+                             - alertType: "normal"
+                             - severity: "none"
+               
+               - updateStats:
+                   assign:
+                       - cityStatus:
+                           name: ${city.name}
+                           tempC: ${weatherData.body.current.temperature - 273.15}
+                           humidity: ${weatherData.body.current.humidity} 
+                           windSpeed: ${weatherData.body.current.wind.speed}
+                           conditions: ${weatherData.body.current.weather[0].description}
+                           visibility: ${weatherData.body.current.visibility}
+                           alert: ${alertType}
+                           severity: ${severity}
+                       - weatherAlerts: ${list.concat(weatherAlerts, [cityStatus])}
+                       - processedCities: ${processedCities + 1}
+
+   - generateReport:
+       return:
+           cities: ${weatherAlerts}
+           totalProcessed: ${processedCities}
+           alertsCount: ${alertsCount}
