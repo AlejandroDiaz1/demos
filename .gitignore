@@ -27,6 +27,7 @@ data/
 
 # Special/personal notes
 text.txt
+extra/
 
 # Other
 .DS_Store

@@ -1,0 +1,56 @@
+--------------------------------------------------------------------------------> DEMOS
+Cloud Function to Automate CSV data import into Google Sheets:
+https://codelabs.developers.google.com/codelabs/cloud-function2sheet#0
+
+Python quickstart: 
+https://developers.google.com/sheets/api/quickstart/python
+
+Use Python To Import Data to Google Sheets:
+https://www.youtube.com/watch?v=X-L1NKoEi10
+
+--------------------------------------------------------------------------------> DOCS
+Choose Google Drive API scopes: 
+https://developers.google.com/drive/api/guides/api-specific-auth
+
+Google API Workspace (Postman):
+https://www.postman.com/postman/google-api-workspace/overview
+
+WF Google Sheets API Connector Overview:
+https://cloud.google.com/workflows/docs/reference/googleapis/sheets/Overview
+
+Create a spreadsheet:
+https://developers.google.com/sheets/api/guides/create
+
+Method: spreadsheets.create:
+https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/create
+
+Create and populate folders:
+https://developers.google.com/drive/api/guides/folder#create_a_file_in_a_folder
+
+
+
+
+--------------------------------------------------------------------------------> GUIÓN
+
+Primero es importante definir el caso de uso especifico
+Habilitar las APIs: Drive y Google Sheets
+
+* Ejemplo 1: Cloud Function
+Ejecución manual (HTTPS) para creación de un file en blanco
+Se crea en el drive de la SA y se comparte con EMAIL
+
+* Ejemplo 2: Cloud Function
+Ejecución automática (Cloud Storage) para creación de un file a partir de un CSV
+Se crea en el drive de la SA y se comparte con EMAIL
+
+* Ejemplo 3: Cloud Function
+Ejecución automática (Cloud Storage) para creación de un file a partir de un CSV
+Se crea en la carpeta con FOLDER_ID del usuario con EMAIL
+La SA debe estar invitada como editor en el folder
+
+* Ejemplo 4: Workflows
+  - Workflows invoker
+Ejecución automática (Cloud Storage) para creación de un file a partir de un CSV
+Se crea en la carpeta con FOLDER_ID del usuario con EMAIL
+La SA debe estar invitada como editor en el folder
+

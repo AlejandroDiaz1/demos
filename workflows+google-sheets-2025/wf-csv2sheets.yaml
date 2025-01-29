@@ -1,0 +1,92 @@
+# * IAM roles
+# Cloud Run Invoker
+# Eventarc Event Receiver
+# Storage Admin
+# Workflows invoker
+# Logs writer
+
+# * Env var:
+# EMAIL - EMAIL
+# FOLDER_ID - FOLDER_ID
+
+# * requirements.txt
+# functions-framework==3.*
+# google-api-python-client 
+# google-auth-httplib2 
+# google-auth-oauthlib
+# google-auth
+# google-cloud-storage
+    
+# Cloud storage trigger
+
+# Service account creates a new Google Sheets file (from uploaded CSV) and uploads it at the FOLDER_ID location
+
+main:
+    params: [input]
+    steps:
+    - init:
+        assign:
+            - main_url: https://us-central1-ci-gestor-sandbox.cloudfunctions.net/demo-wf-steps-csv2sheets
+
+    - step1_storage:
+        call: http.post
+        args:
+            url: ${main_url}
+            auth:
+                type: OIDC
+            query:
+                step: "storage"
+            body:
+                bucket_name: ${input.data.bucket}
+                file_name: ${input.data.name}
+        result: storage_result
+    
+    - log_storage_result:
+        call: sys.log
+        args:
+          text: ${"storage_result -> " + json.encode_to_string(storage_result.body)}
+          severity: INFO
+
+    - step2_sheets:
+        call: http.post
+        args:
+            url: ${main_url}
+            auth:
+                type: OIDC
+            query:
+                step: "sheets"
+            body:
+                values: ${storage_result.body.values}
+        result: sheets_result
+    
+    - log_sheets_result:
+        call: sys.log
+        args:
+          text: ${"sheets_result -> " + json.encode_to_string(sheets_result.body)}
+          severity: INFO
+    
+    - step3_drive:
+        call: http.post
+        args:
+            url: ${main_url}
+            auth:
+                type: OIDC
+            query:
+                step: "drive"
+            body:
+                email_address: ${sys.get_env("EMAIL")}
+                folder_id: ${sys.get_env("FOLDER_ID")}
+                sheet_id: ${sheets_result.body.sheet_id}
+        result: drive_result
+    
+    - log_drive_result:
+        call: sys.log
+        args:
+          text: ${"drive_result -> " + json.encode_to_string(drive_result.body)}
+          severity: INFO
+
+    - returnOutput:
+        return: 
+            result:
+                doc_url: '${drive_result.body.doc_url}'
+                status: 200
