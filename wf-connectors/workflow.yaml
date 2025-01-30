@@ -1,0 +1,76 @@
+main:
+  params: [event]
+  steps:
+    - init:
+        assign:
+          - driveScope: https://www.googleapis.com/auth/drive
+          - targetEmail: "email@amarello.com.mx"
+          - folderId: "ID_FOLDER"
+          # Get file information from the triggering event
+          - bucket: ${event.data.bucket}
+          - file: ${event.data.name}
+          - timestamp: ${sys.now()}
+
+
+    # Step 1: Create the spreadsheet
+    - create_spreadsheet:
+        call: googleapis.sheets.v4.spreadsheets.create
+        args:
+          body:
+            properties:
+              title: ${text.split(file, ".")[0] + "_" + timestamp}
+          connector_params:
+            scopes: ${driveScope}
+        result: spreadsheet_resp
+
+    - assign_sheet_id:
+        assign:
+          - sheetId: ${spreadsheet_resp.spreadsheetId}
+
+    # # Step 2: Call Cloud Function to process CSV and update sheet
+    - process_csv:
+        call: http.post
+        args:
+            url: "https://us-central1-ci-gestor-sandbox.cloudfunctions.net/demo-parse-csv2sheet"
+            auth:
+                type: OIDC
+                audience: "https://us-central1-ci-gestor-sandbox.cloudfunctions.net/demo-parse-csv2sheet"
+            body:
+                bucket: ${bucket}
+                file: ${file}
+                sheet_id: ${sheetId}
+        result: process_result
+
+    # Step 3: Move file to specified folder
+    - move_to_folder:
+        call: http.patch
+        args:
+          url: ${"https://www.googleapis.com/drive/v3/files/" + sheetId}
+          query:
+            addParents: ${folderId}
+            removeParents: "root"
+          auth:
+            type: OAuth2
+            scopes: ${driveScope}
+        result: move_result
+
+    # Step 4: Share the file
+    - share_spreadsheet:
+        call: http.post
+        args:
+          url: ${"https://www.googleapis.com/drive/v3/files/" + sheetId + "/permissions"}
+          auth:
+            type: OAuth2
+            scopes: ${driveScope}
+          body:
+            role: "writer"
+            type: "user"
+            emailAddress: ${targetEmail}
+            sendNotificationEmail: false
+
+    - return_step:
+        return:
+          event_result: ${event}
+          spreadsheet_id: ${sheetId}
+          process_result: ${process_result}
+          move_result: ${move_result}
