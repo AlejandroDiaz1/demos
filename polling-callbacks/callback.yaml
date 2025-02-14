@@ -1,0 +1,33 @@
+main:
+    params: [input]
+    steps:
+        - init:
+            assign:
+                - random_number: 10
+        
+        - create_callback:
+            call: events.create_callback_endpoint
+            args:
+                http_callback_method: "POST"
+            result: callback_details
+
+        - log_info:
+            call: sys.log
+            args:
+                text: ${"Waiting for approval at -> " + callback_details.url}
+
+        - await_callback:
+            call: events.await_callback
+            args:
+                callback: ${callback_details}
+                timeout: 3600
+            result: callback_request
+
+        - process_response:
+            assign:
+                - approved: ${callback_request.http_request.body.approved}
+
+        - return_result:
+            return:
+                number: ${random_number}
+                approved: ${approved}
