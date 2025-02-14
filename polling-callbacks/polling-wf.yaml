@@ -1,0 +1,61 @@
+main:
+    params: [input]
+    steps:
+        - startPipeline:
+            call: http.post
+            args:
+                url: ${"https://us-central1-ci-gestor-sandbox.cloudfunctions.net/demo-polling/api/v3/namespaces/DGP/apps/" + input.pipeline_name + "/start"}
+            result: startResponse
+
+        - checkPipelineStatus:
+            try:
+                call: http.get
+                args:
+                    url: ${"https://us-central1-ci-gestor-sandbox.cloudfunctions.net/demo-polling/api/v3/namespaces/DGP/apps/" + input.pipeline_name + "/workflows/DataPipelineWorkflow/runs"}
+                result: pipelineStatus
+            except:
+                as: e
+                steps:
+                    - known_errors:
+                        switch:
+                            - condition: ${not("HttpError" in e.tags)}
+                              next: connection_problem
+                            - condition: ${e.code == 404}
+                              next: url_not_found
+                            - condition: ${e.code == 403}
+                              next: auth_problem
+                    - unhandled_exception:
+                        raise: ${e}
+
+        - evaluateResponse:
+            assign:
+                - isEmpty: ${len(pipelineStatus.body.data) == 0}
+
+        - checkCompletion:
+            switch:
+                - condition: ${isEmpty}
+                  next: returnSuccess
+                - condition: ${not isEmpty}
+                  next: waitAndRetry
+
+        - waitAndRetry:
+            steps:
+                - sleep:
+                    call: sys.sleep
+                    args:
+                        seconds: 60
+                - retry:
+                    next: checkPipelineStatus
+
+        - returnSuccess:
+            return:
+                result: "Pipeline completed successfully"
+                
+        - connection_problem:
+            return: "Connection problem; check URL"
+            
+        - url_not_found:
+            return: "Sorry, URL wasn't found"
+            
+        - auth_problem:
+            return: "Authentication error"
